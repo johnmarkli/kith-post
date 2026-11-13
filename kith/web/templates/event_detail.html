@@ -73,6 +73,7 @@
   <div class="detail-actions">
     <a class="btn btn-primary" href="/events/{{ event.id }}/preview" target="_blank" rel="noopener">Preview {{ noun }}</a>
     <a class="btn btn-quiet" href="/events/{{ event.id }}/edit">Edit</a>
+    <a class="btn btn-quiet" href="/events/{{ event.id }}/updates">Email guests</a>
     {% if queued_count and queued_count > 0 %}
       <form method="post" action="/events/{{ event.id }}/send" class="inline-form"
             onsubmit="return confirm('{{ send_confirm }}');">

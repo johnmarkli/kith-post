@@ -58,3 +58,43 @@ def client():
 
     with TestClient(app) as c:  # context manager runs lifespan (creates tables)
         yield c
+
+
+@pytest.fixture
+def occasion(client):
+    """An owned event with each RSVP category, unsent and WhatsApp guests."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from kith.db.models import Event, Recipient, User
+
+    client.post("/auth/dev-login")
+    with client.app.state.session_factory() as db:
+        owner = db.scalars(select(User)).one()
+        ev = Event(
+            user_id=owner.id, title="Party", blocks={"rsvp": True},
+            cc='[{"email":"never-copy@example.com"}]',
+        )
+        db.add(ev)
+        db.flush()
+        rows = {}
+        for label, status in [
+            ("unanswered", "sent"), ("yes", "coming"), ("no", "declined"),
+            ("unsent", "queued"), ("phone", "coming"),
+        ]:
+            r = Recipient(
+                event_id=ev.id,
+                email=f"{label}@example.com" if label != "phone" else "",
+                token=f"token-{label}", status=status, name=label,
+                phone="+15551234567" if label == "phone" else None,
+                channel="whatsapp" if label == "phone" else None,
+                sent_at=None if status == "queued" else datetime.now(UTC),
+                party_size=3, adults=2, kids=1, note="Keep this note",
+                allergies="Keep this too", rsvp_at=datetime.now(UTC),
+            )
+            db.add(r)
+            db.flush()
+            rows[label] = r.id
+        db.commit()
+        return ev.id, owner.id, rows

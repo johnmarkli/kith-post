@@ -217,6 +217,43 @@ class Recipient(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class GuestUpdate(Base):
+    """An owned announcement draft with an immutable recipient snapshot."""
+
+    __tablename__ = "guest_updates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), index=True
+    )
+    subject: Mapped[str] = mapped_column(EncryptedString)
+    message: Mapped[str] = mapped_column(EncryptedString)
+    mode: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UpdateDelivery(Base):
+    """Separate send state: never modify an invitation's RSVP or delivery fields."""
+
+    __tablename__ = "update_deliveries"
+    __table_args__ = (UniqueConstraint("update_id", "recipient_id", name="uq_update_recipient"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    update_id: Mapped[str] = mapped_column(
+        ForeignKey("guest_updates.id", ondelete="CASCADE"), index=True
+    )
+    recipient_id: Mapped[str | None] = mapped_column(
+        ForeignKey("recipients.id", ondelete="SET NULL"), nullable=True
+    )
+    email: Mapped[str] = mapped_column(EncryptedString)
+    name: Mapped[str | None] = mapped_column(EncryptedString, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Reminder(Base):
     """One scheduled nudge for a non-responding recipient (G5, §8). Persisted so the
     sweep is downtime-safe: any pending row whose time has passed fires on the next

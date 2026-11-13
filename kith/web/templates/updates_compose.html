@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Email guests — {{ settings.app_name }}{% endblock %}
+{% block content %}
+<section class="detail">
+  <p><a class="link" href="/events/{{ event.id }}">← {{ event.title or "Your card" }}</a></p>
+  <h2>Email guests</h2>
+  <p>Send a custom update without changing anyone’s RSVP or invitation.</p>
+  <p class="field-hint">Email only: unsent invitations and WhatsApp guests are excluded.
+    Groups combine; each email address is included once. “All invited” includes everyone eligible.</p>
+  <p class="sent-note">Current mode: <strong>{{ settings.send_mode.value }}</strong>.
+    {% if settings.send_mode.value == "dry-run" %}Nothing is emailed; messages are saved locally.
+    {% elif settings.send_mode.value == "self-only" %}Every message goes only to your inbox: {{ user.email }}.
+    {% else %}Confirmed messages will be emailed to the selected guests.{% endif %}</p>
+  {% if error %}<p role="alert" class="ask-note">{{ error }}</p>{% endif %}
+  <form method="post" action="/events/{{ event.id }}/updates/preview">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Recipient groups — select any combination</legend>
+      {% for value, label in groups.items() %}
+      <label><input type="checkbox" name="groups" value="{{ value }}"
+        {% if value in values.get('groups', []) %}checked{% endif %}> {{ label }}</label><br>
+      {% endfor %}
+    </fieldset>
+    <details>
+      <summary>Also select individual guests ({{ recipients|length }})</summary>
+      {% for recipient in recipients %}
+      <label><input type="checkbox" name="recipient_ids" value="{{ recipient.id }}"
+        {% if recipient.id in values.get('recipient_ids', []) %}checked{% endif %}>
+        {{ recipient.name or recipient.email }}{% if recipient.name %} — {{ recipient.email }}{% endif %}
+        ({{ {'sent': 'not responded', 'coming': 'RSVP yes', 'declined': 'RSVP no'}[recipient.status] }})
+      </label><br>
+      {% else %}<p>No already-invited email guests yet. Send invitations first.</p>{% endfor %}
+    </details>
+    <p class="field"><label for="update-subject">Subject</label>
+      <input id="update-subject" name="subject" maxlength="200" required
+        value="{{ values.get('subject', 'Update: ' ~ (event.title or 'Your invitation')) }}"></p>
+    <p class="field"><label for="update-message">Message</label>
+      <textarea id="update-message" name="message" rows="8" maxlength="10000" required
+        placeholder="Parking is behind the building.">{{ values.get('message', '') }}</textarea></p>
+    <p class="field-hint">Plain text only. Each message also includes that guest’s existing invitation link.
+      No guest list, CC or BCC is added to the email.</p>
+    <button class="btn btn-primary" type="submit" {% if not recipients %}disabled{% endif %}>Preview recipients &amp; message</button>
+  </form>
+  {% if history %}
+  <h3>Recent updates and previews</h3>
+  <ul>{% for update in history %}
+    <li><a class="link" href="/events/{{ event.id }}/updates/{{ update.id }}">{{ update.subject }}</a>
+      — {{ update.mode }}, {{ update.status }}</li>
+  {% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}

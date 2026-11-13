@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Guest update preview — {{ settings.app_name }}{% endblock %}
+{% block content %}
+<section class="detail">
+  <p><a class="link" href="/events/{{ event.id }}/updates">← Email guests</a></p>
+  <h2>{{ 'Preview update' if batch.status == 'draft' else 'Update delivery status' }}</h2>
+  <p><strong>{{ deliveries|length }} recipients</strong> · Mode: <strong>{{ batch.mode }}</strong>.</p>
+  {% if batch.mode == "dry-run" %}
+  <p>Dry-run: nothing is emailed. Messages are saved as local .eml files.</p>
+  {% elif batch.mode == "self-only" %}
+  <p>Self-only test: every message is redirected to {{ user.email }}; guests receive nothing.</p>
+  {% else %}<p>Live: confirming will email the guests below.</p>{% endif %}
+  {% if batch.mode != settings.send_mode.value %}
+  <p role="alert">Send mode changed. Start a new preview before sending.</p>
+  {% endif %}
+  {% if error %}<p role="alert" class="ask-note">{{ error }}</p>{% endif %}
+  <h3>{{ batch.subject }}</h3>
+  <div style="white-space: pre-wrap">{{ batch.message }}</div>
+  <p class="field-hint">Each guest also receives their own invitation link. RSVPs, headcounts,
+    notes and reminders are not changed. This recipient list is frozen; later RSVP changes
+    do not add guests to this update. Deleted or changed email recipients are skipped.</p>
+  <h3>Recipients</h3>
+  <ul>{% for delivery in deliveries %}
+    <li>{{ delivery.name or delivery.email }}{% if delivery.name %} — {{ delivery.email }}{% endif %}
+      {% if batch.status != 'draft' %} — {{ delivery.status }}{% endif %}
+      {% if delivery.error %} ({{ delivery.error }}){% endif %}</li>
+  {% endfor %}</ul>
+  {% if batch.status == 'draft' and batch.mode == settings.send_mode.value %}
+    <form method="post" action="/events/{{ event.id }}/updates/{{ batch.id }}/send">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary" type="submit">
+        {% if batch.mode == 'dry-run' %}Confirm dry-run
+        {% elif batch.mode == 'self-only' %}Confirm self-only test
+        {% else %}Confirm send to {{ deliveries|length }} guests{% endif %}
+      </button>
+    </form>
+    <p><a class="link" href="/events/{{ event.id }}/updates">Start a new preview instead</a></p>
+  {% else %}
+    <p>{{ counts.get('sent', 0) }} sent · {{ counts.get('failed', 0) }} failed ·
+      {{ counts.get('skipped', 0) }} skipped · {{ counts.get('uncertain', 0) }} uncertain ·
+      {{ counts.get('sending', 0) }} in progress · {{ counts.get('pending', 0) }} pending.</p>
+    {% if batch.status == 'sending' or counts.get('uncertain', 0) %}
+    <p role="alert">Delivery may still be running or may have been interrupted. An uncertain
+      email might already have arrived. Check the sender’s Sent folder before composing
+      another update. This batch will not be automatically retried.</p>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}
