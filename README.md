@@ -1,5 +1,9 @@
 # Kith Post
 
+**Custom fork:** adds [guest update emails](docs/guest-updates.md) with combined
+recipient groups, preview/confirmation, and preserved RSVPs. Based on upstream
+v1.3.0; the upstream project and demo below are separate from this fork.
+
 [![CI](https://github.com/iliabaranov/kith-post/actions/workflows/ci.yml/badge.svg)](https://github.com/iliabaranov/kith-post/actions/workflows/ci.yml)
 &nbsp;License: MIT &nbsp;·&nbsp; Python 3.12 · FastAPI · SQLite
 
